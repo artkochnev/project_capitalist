@@ -2,5 +2,12 @@
 A portfolio-building app based on behavioral finance
 
 # Folder structure
-* Scripts: put your 
-** Assets: for files needed to run the scripts
+
+<ul>
+  <li>Scripts: put your python files here</li>
+    <ul>
+      <li>Assets: for files needed to run the scripts</li>
+      <li>Indented item</li>
+    </ul>
+  </li>
+</ul> 
