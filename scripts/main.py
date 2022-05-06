@@ -1,10 +1,16 @@
 # THE PORTFOLIO SELECTION ALGRORITHM
 import pandas as pd
 import logging
-from pypfopt import EfficientFrontier
-from pypfopt import risk_models
-from pypfopt import expected_returns
+#from pypfopt import EfficientFrontier
+#from pypfopt import risk_models
+import yfinance as yf
+from datetime import datetime
+import matplotlib.pyplot as plt
 
+
+#from pypfopt import expected_returns
+
+import pandas_datareader.data as web
 """CHECK SCRIPTS IN THIS LIBRARY
 https://pypi.org/project/pyportfolioopt/#an-overview-of-classical-portfolio-optimization-methods
 https://builtin.com/data-science/portfolio-optimization-python
@@ -14,9 +20,12 @@ https://builtin.com/data-science/portfolio-optimization-python
 log = logging.getLogger(__name__)
 log.debug
 
+START = datetime(2021, 1, 1)
+END = datetime(2022, 1, 1)
+
 # PUT NEW CLASSES HERE
 class Stocks:
-    def __init__(self, df = pd.DataFrame):
+    def __init__(self, df=pd.DataFrame):
         self.df = df
 
 # PUT NEW FUNCTIONS HERE
@@ -37,6 +46,25 @@ def make_portfolio(df = pd.DataFrame):
     except Exception as e:
         log.error("Error in portfolio calculation", exc_info=True)
 
+def get_stock_datareader(ticker):
+    data = web.DataReader(ticker,"yahoo",START,END)
+    data[ticker] = data["ticker{}"]
+    data = data[["ticker{}"]]
+    print(data.head())
+    return data
+
+def get_stock_yfinance(ticker):
+
+    data = yf.download(ticker, start=START,end= END)
+    return data
+
+def display(start,end,data):
+    plt.figure(figsize=(20, 10))
+    plt.title('Opening Prices from {} to {}'.format(start,end))
+    plt.plot(data['Open'])
+    plt.show()
+
+
 # PUT GLOBALS HERE
 DF_PATH = r'assets/stocks.csv'
 DF = pd.read_csv(DF_PATH, parse_dates=True, index_col="date")
@@ -44,6 +72,8 @@ BUNDLE = Stocks(df = DF)
 
 # FINAL SCRIPT
 if __name__ == "__main__":
-    portfolio_info = make_portfolio(DF)
-    print(portfolio_info['clean weights'])
-    print(portfolio_info['performance'])
+    df_price=get_stock_yfinance("PFE")
+    s=1
+    #portfolio_info = make_portfolio(DF)
+    #print(portfolio_info['clean weights'])
+    #print(portfolio_info['performance'])
