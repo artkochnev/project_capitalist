@@ -44,16 +44,16 @@ def make_portfolio(df = pd.DataFrame):
         return(output)
     except Exception as e:
         log.error("Error in portfolio calculation", exc_info=True)
+
 def allocation_values(df,weights,total_portfolio):
     try:
         #calculate allocation values
-        weights = make_portfolio()[1]
         latest_prices = get_latest_prices(df)
         da = DiscreteAllocation(weights, latest_prices, total_portfolio_value=total_portfolio)
         allocation, leftover = da.greedy_portfolio()
         print("Discrete allocation:", allocation)
-        remaining= ("Funds remaining: ${:.2f}".format(leftover))
-        output= {'Discrete allocation': allocation}
+        remaining = ("Funds remaining: ${:.2f}".format(leftover))
+        output = {'Discrete allocation': allocation}
         return output
     except Exception as e:
         log.error("Error in portfolio allocation", exc_info=True)
@@ -71,6 +71,7 @@ def get_stock_yahoo(ticker):
     data = data[[ticker]]
     print(data.head())
     return data
+
 def plot_price(df):
     plt.figure(figsize=(14, 7))
     for c in df.columns.values:
@@ -86,7 +87,6 @@ def combine_stocks(tickers):
     print(df_merged.head())
     return df_merged
 
-
 def display(start,end,data):
     plt.figure(figsize=(20, 10))
     plt.title('Opening Prices from {} to {}'.format(start,end))
@@ -95,8 +95,8 @@ def display(start,end,data):
 
 # PUT GLOBALS HERE
 DF_PATH = r'assets/stocks.csv'
-DF = pd.read_csv(DF_PATH, parse_dates=True, index_col="date")
-BUNDLE = Stocks(df = DF)
+#DF = pd.read_csv(DF_PATH, parse_dates=True, index_col="date")
+#BUNDLE = Stocks(df = DF)
 
 # FINAL SCRIPT
 if __name__ == "__main__":
@@ -106,8 +106,10 @@ if __name__ == "__main__":
     #plot_return
     #https://towardsdatascience.com/efficient-frontier-portfolio-optimisation-in-python-e7844051e7f
     portfolio_weights_performance= make_portfolio(portfolio)
-    portfolio_allocation=allocation_values(portfolio,portfolio_weights_performance[1],10000)
+    weights = portfolio_weights_performance['clean weights']  # Use a selector by key inside the dictionary, does wonders.
+    portfolio_allocation=allocation_values(portfolio,weights,10000)
     s=1
     #portfolio_info = make_portfolio(DF)
     #print(portfolio_info['clean weights'])
     #print(portfolio_info['performance'])
+
