@@ -1,7 +1,10 @@
 # THE PORTFOLIO SELECTION ALGRORITHM
+import copy
+import numpy as np
 import pandas as pd
 import requests
 import io
+from pypfopt import plotting
 import logging
 import yfinance as yf
 from datetime import datetime
@@ -105,9 +108,9 @@ def allocation_values(df,weights,total_portfolio):
         log.error("Error in portfolio allocation", exc_info=True)
 
 def get_stock_datareader(ticker):
-    data = web.DataReader("ticker{}","yahoo",START,END)
+    data = web.DataReader(ticker,"yahoo",START,END)
     data["ticker{}"] = data["Close"]
-    data = data[["ticker{}"]]
+    data = data[[ticker]]
     print(data.head())
     return data
 
@@ -118,21 +121,26 @@ def get_stock_yahoo(ticker):
     print(data.head())
     return data
 
-def plot_price(df):
+def plot_price(df=pd.DataFrame):
     plt.figure(figsize=(14, 7))
     for c in df.columns.values:
         plt.plot(df.index, df[c], lw=3, alpha=0.8, label=c)
     plt.legend(loc='upper left', fontsize=12)
     plt.ylabel('price in $')
+    return plt.show()
 
-def plot_return(df):
+def plot_return(df=pd.DataFrame):
     returns = df.pct_change()
     plt.figure(figsize=(14, 7))
     for c in returns.columns.values:
         plt.plot(returns.index, returns[c], lw=3, alpha=0.8, label=c)
     plt.legend(loc='upper right', fontsize=12)
     plt.ylabel('daily returns')
-def plot_eff_frontier(df):
+    return plt.show()
+
+def plot_eff_frontier(df=pd.DataFrame):
+    mu = mean_historical_return(df)
+    S = portfolio.cov()
     ef = EfficientFrontier(mu, S, weight_bounds=(None, None))
     ef.add_constraint(lambda w: w[0] >= 0.2)
     ef.add_constraint(lambda w: w[2] == 0.15)
@@ -163,7 +171,7 @@ def plot_eff_frontier(df):
     ax.legend()
     plt.tight_layout()
     plt.savefig("ef_scatter.png", dpi=200)
-    plt.show()
+    return plt.show()
 
 def combine_stocks(tickers):
     data_frames = []
@@ -178,27 +186,28 @@ def display(start,end,data):
     plt.figure(figsize=(20, 10))
     plt.title('Opening Prices from {} to {}'.format(start,end))
     plt.plot(data['Open'])
-    plt.show()
+    return plt.show()
 
 # PUT GLOBALS HERE
-#DF_PATH="https://raw.githubusercontent.com/artkochnev/project_capitalist/main/scripts/assets/stocks.csv?token=GHSAT0AAAAAABUHJOP2HUKK3JBWPBXDXI3WYT6BP6Q"
-#download = requests.get(DF_PATH).content
-#DF = pd.read_csv(io.StringIO(download.decode('utf-8')))
-#if DF.empty:
-    #DF_PATH="/Users/spiridionefrancescosardina/PycharmProjects/pythonProject/app_project/project_capitalist/scripts/assets/stocks.csv"
-    #DF = pd.read_csv(DF_PATH, parse_dates=True, index_col="date")
-#BUNDLE = Stocks(df = DF)
-DF_PATH = r'assets/stocks.csv'
-#DF = pd.read_csv(DF_PATH, parse_dates=True, index_col="date")
-#BUNDLE = Stocks(df = DF)
+DF_PATH="https://raw.githubusercontent.com/artkochnev/project_capitalist/main/scripts/assets/stocks.csv?token=GHSAT0AAAAAABUHJOP2HUKK3JBWPBXDXI3WYT6BP6Q"
+download = requests.get(DF_PATH).content
+DF = pd.read_csv(io.StringIO(download.decode('utf-8')),parse_dates=True, index_col="date")
+if DF.empty:
+    DF_PATH = r'assets/stocks.csv'
+    DF = pd.read_csv(DF_PATH, parse_dates=True, index_col="date")
+    BUNDLE = Stocks(df = DF)
+
+
 
 # FINAL SCRIPT
 if __name__ == "__main__":
-    tickers = ["MRNA", "PFE", "JNJ"]
-    portfolio= combine_stocks(tickers)
+    #tickers = ["MRNA", "PFE", "JNJ"]
+    #use the above DF for the below calculations
+    #portfolio= combine_stocks(tickers)
+    portfolio = combine_stocks(DF)
     plot_price=plot_price(portfolio)
     plot_return=plot_return(portfolio)
-    #plot_eff_frontier=plot_eff_frontier(portfolio)
+    plot_eff_frontier=plot_eff_frontier(portfolio)
     #Describe the 2 plots dinamically
     #MVO
     portfolio_weights_performance_mvo= make_portfolio_mvo(portfolio)
