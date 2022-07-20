@@ -18,6 +18,8 @@ from pypfopt.discrete_allocation import DiscreteAllocation, get_latest_prices
 from pypfopt import HRPOpt
 from pypfopt.efficient_frontier import EfficientCVaR
 from pypfopt.black_litterman import BlackLittermanModel
+from pypfopt.risk_models import CovarianceShrinkage
+
 """CHECK SCRIPTS IN THIS LIBRARY
 https://pypi.org/project/pyportfolioopt/#an-overview-of-classical-portfolio-optimization-methods
 https://builtin.com/data-science/portfolio-optimization-python
@@ -53,6 +55,7 @@ def make_portfolio_mvo(df = pd.DataFrame):
         return(output)
     except Exception as e:
         log.error("Error in portfolio calculation MVO", exc_info=True)
+
 def make_portfolio_hrp(df=pd.DataFrame):
     try:
         returns = df.pct_change().dropna()
@@ -64,6 +67,7 @@ def make_portfolio_hrp(df=pd.DataFrame):
         return(output)
     except Exception as e:
         log.error("Error in portfolio calculation HRP", exc_info=True)
+
 def make_portfolio_mcvar(df=pd.DataFrame):
     try:
         mu = mean_historical_return(df)
@@ -140,23 +144,28 @@ def plot_return(df=pd.DataFrame):
 
 def plot_eff_frontier(df=pd.DataFrame):
     mu = mean_historical_return(df)
-    S = portfolio.cov()
+    #S = CovarianceShrinkage(df).ledoit_wolf()
+    S = sample_cov(df, frequency=252)
     ef = EfficientFrontier(mu, S, weight_bounds=(None, None))
     ef.add_constraint(lambda w: w[0] >= 0.2)
     ef.add_constraint(lambda w: w[2] == 0.15)
     ef.add_constraint(lambda w: w[3] + w[4] <= 0.10)
-    # 100 portfolios with risks between 0.10 and 0.30. Range of parmeter for a frontier.
-    risk_range = np.linspace(0.10, 0.40, 100)
-    plotting.plot_efficient_frontier(ef, ef_param="risk", ef_param_range=risk_range,
-                                     show_assets=True, showfig=True)
     fig, ax = plt.subplots()
-    ef_max_sharpe = copy.deepcopy(ef)
-    plotting.plot_efficient_frontier(ef, ax=ax, show_assets=False)
+    plotting.plot_efficient_frontier(ef, ax=ax, show_assets=True)
+    print(ef)
+ 
+    # 100 portfolios with risks between 0.10 and 0.30. Range of parmeter for a frontier.
+    # risk_range = np.linspace(0.10, 0.40, 100)
+    # plotting.plot_efficient_frontier(ef, ef_param="risk", ef_param_range=risk_range,
+    #                                  show_assets=True, showfig=True)
+    # fig, ax = plt.subplots()
+    # ef_max_sharpe = copy.deepcopy(ef)
+    # plotting.plot_efficient_frontier(ef, ax=ax, show_assets=False)
 
     # Find the tangency portfolio
-    ef_max_sharpe.max_sharpe()
-    ret_tangent, std_tangent, _ = ef_max_sharpe.portfolio_performance()
-    ax.scatter(std_tangent, ret_tangent, marker="*", s=100, c="r", label="Max Sharpe")
+    # ef_max_sharpe.max_sharpe()
+    # ret_tangent, std_tangent, _ = ef_max_sharpe.portfolio_performance()
+    # ax.scatter(std_tangent, ret_tangent, marker="*", s=100, c="r", label="Max Sharpe")
 
     # Generate random portfolios
     n_samples = 10000
@@ -181,30 +190,38 @@ def combine_stocks(tickers):
     print(df_merged.head())
     return df_merged
 
-
 def display(start,end,data):
     plt.figure(figsize=(20, 10))
     plt.title('Opening Prices from {} to {}'.format(start,end))
     plt.plot(data['Open'])
     return plt.show()
 
+def get_data(GLOBAL_PATH, LOCAL_PATH):
+    try:
+        download = requests.get(GLOBAL_PATH).content
+        df = pd.read_csv(io.StringIO(download.decode('utf-8')), parse_dates=True, index_col='date') 
+        df = df.dropna()
+        print(df)
+        return df
+    except Exception as e:
+        df = pd.read_csv(LOCAL_PATH, parse_dates=True, index_col='date')
+        return df
+
 # PUT GLOBALS HERE
+GLOBAL_PATH="https://raw.githubusercontent.com/artkochnev/project_capitalist/main/scripts/assets/stocks.csv?token=GHSAT0AAAAAABUHJOP2HUKK3JBWPBXDXI3WYT6BP6Q"
+LOCAL_PATH=r'assets/stocks.csv'
+
 DF_PATH="https://raw.githubusercontent.com/artkochnev/project_capitalist/main/scripts/assets/stocks.csv?token=GHSAT0AAAAAABUHJOP2HUKK3JBWPBXDXI3WYT6BP6Q"
 download = requests.get(DF_PATH).content
 DF = pd.read_csv(io.StringIO(download.decode('utf-8')),parse_dates=True, index_col="date")
-if DF.empty:
-    DF_PATH = r'assets/stocks.csv'
-    DF = pd.read_csv(DF_PATH, parse_dates=True, index_col="date")
-    BUNDLE = Stocks(df = DF)
-
-
 
 # FINAL SCRIPT
 if __name__ == "__main__":
-    #tickers = ["MRNA", "PFE", "JNJ"]
     #use the above DF for the below calculations
     #portfolio= combine_stocks(tickers)
-    portfolio = combine_stocks(DF)
+    df = get_data(GLOBAL_PATH, LOCAL_PATH)
+    #portfolio = combine_stocks(df)
+    portfolio = df
     plot_price=plot_price(portfolio)
     plot_return=plot_return(portfolio)
     plot_eff_frontier=plot_eff_frontier(portfolio)
