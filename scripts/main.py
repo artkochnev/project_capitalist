@@ -19,6 +19,7 @@ from pypfopt import HRPOpt
 from pypfopt.efficient_frontier import EfficientCVaR
 from pypfopt.black_litterman import BlackLittermanModel
 from pypfopt.risk_models import CovarianceShrinkage
+import plotly.express as px
 
 """CHECK SCRIPTS IN THIS LIBRARY
 https://pypi.org/project/pyportfolioopt/#an-overview-of-classical-portfolio-optimization-methods
@@ -221,20 +222,41 @@ if __name__ == "__main__":
     #portfolio= combine_stocks(tickers)
     df = get_data(GLOBAL_PATH, LOCAL_PATH)
     #portfolio = combine_stocks(df)
-    portfolio = df
-    plot_price=plot_price(portfolio)
-    plot_return=plot_return(portfolio)
-    plot_eff_frontier=plot_eff_frontier(portfolio)
+    benchmark = "SP500"
+    portfolio = df.loc[:, ~df.columns.isin([benchmark])]
+
+    # plot_price=plot_price(portfolio)
+    # plot_return=plot_return(portfolio)
+    # plot_eff_frontier=plot_eff_frontier(portfolio)
     #Describe the 2 plots dinamically
     #MVO
-    portfolio_weights_performance_mvo= make_portfolio_mvo(portfolio)
+    cut_off_date = "2016-01-01"
+    df_train = df.loc[df.index < str(cut_off_date)]
+    train_size = len(df_train.index)
+    print(f'Size of the training set: {train_size}' )
+    portfolio_weights_performance_mvo= make_portfolio_mvo(df_train)
     weights = portfolio_weights_performance_mvo['clean weights']  # Use a selector by key inside the dictionary, does wonders.
-    portfolio_allocation_mvo=allocation_values(portfolio,weights,10000)
-    #HRP
-    portfolio_weights_performance_hrp=make_portfolio_hrp(portfolio)
-    weights = portfolio_weights_performance_mvo['raw weights']
-    portfolio_allocation_hrp=allocation_values(portfolio,weights,10000)
-    #mCVAR
-    portfolio_weights_performance_mcvar=make_portfolio_mcvar(portfolio)
-    weights = portfolio_weights_performance_mvo['clean weights']
-    portfolio_allocation_mcvar=allocation_values(portfolio,weights,10000)
+
+    # Calculate results for the fixed portfolio weights
+    df_weights = pd.DataFrame(weights, index = portfolio.index)
+    df_results = portfolio * df_weights
+    df_results['portfolio total'] = df_results.sum(axis=1)
+    df_results['index'] = df_results['portfolio total'] / df_results['portfolio total'][0]
+    
+    # Calculate benchmark portfolio
+    df_benchmark = df.loc[:, df.columns.isin([benchmark])]
+    df_benchmark['benchmark_index'] = df_benchmark[benchmark] / df_benchmark[benchmark][0]
+    df_backtest = pd.merge(df_results, df_benchmark, left_index = True)
+
+    fig = px.line(df_backtest, y=df_backtest.columns, x=df_backtest.index)
+    fig.show()
+
+    # portfolio_allocation_mvo=allocation_values(portfolio,weights,10000)
+    # #HRP
+    # portfolio_weights_performance_hrp=make_portfolio_hrp(portfolio)
+    # weights = portfolio_weights_performance_mvo['raw weights']
+    # portfolio_allocation_hrp=allocation_values(portfolio,weights,10000)
+    # #mCVAR
+    # portfolio_weights_performance_mcvar=make_portfolio_mcvar(portfolio)
+    # weights = portfolio_weights_performance_mvo['clean weights']
+    # portfolio_allocation_mcvar=allocation_values(portfolio,weights,10000)
