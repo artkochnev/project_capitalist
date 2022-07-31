@@ -49,7 +49,7 @@ def make_portfolio_mvo(df = pd.DataFrame):
         ef = EfficientFrontier(mu, S)
         raw_weights_mvo = ef.max_sharpe()
         cleaned_weights_mvo = ef.clean_weights()
-        print(dict(cleaned_weights_mvo))
+        # print(dict(cleaned_weights_mvo))
         #ef.save_weights_to_file("weights.csv")  # saves to file
         performance = ef.portfolio_performance(verbose=True)
         output = {'raw weights': raw_weights_mvo, 'clean weights': cleaned_weights_mvo, "performance": performance}
@@ -64,7 +64,7 @@ def make_portfolio_hrp(df=pd.DataFrame):
         hrp_weights = hrp.optimize()
         performance=hrp.portfolio_performance(verbose=True)
         output = {'raw weights': hrp_weights, "performance": performance}
-        print(dict(hrp_weights))
+        # print(dict(hrp_weights))
         return(output)
     except Exception as e:
         log.error("Error in portfolio calculation HRP", exc_info=True)
@@ -76,7 +76,7 @@ def make_portfolio_mcvar(df=pd.DataFrame):
         ef_cvar = EfficientCVaR(mu, S)
         cvar_weights = ef_cvar.min_cvar()
         cleaned_weights = ef_cvar.clean_weights()
-        print(dict(cleaned_weights))
+        # print(dict(cleaned_weights))
         output = {'clean weights': cleaned_weights}
         return(output)
     except Exception as e:
@@ -92,7 +92,7 @@ def make_portfolio_blacklitterman(df=pd.DataFrame):
         ef.max_sharpe()
         weights = bl.clean_weights()
         # OR use return-implied weights
-        print(dict(weights))
+        # print(dict(weights))
         output = {'weights': weights}
         return(output)
     except Exception as e:
@@ -105,7 +105,7 @@ def allocation_values(df,weights,total_portfolio):
         #Discrete allocation can deal for short positions
         da = DiscreteAllocation(weights, latest_prices, total_portfolio_value=total_portfolio)
         allocation, leftover = da.greedy_portfolio()
-        print("Discrete allocation:", allocation)
+        # print("Discrete allocation:", allocation)
         remaining = ("Funds remaining: ${:.2f}".format(leftover))
         output = {'Discrete allocation': allocation, '.Remaining:': remaining}
         return output
@@ -116,14 +116,14 @@ def get_stock_datareader(ticker):
     data = web.DataReader(ticker,"yahoo",START,END)
     data["ticker{}"] = data["Close"]
     data = data[[ticker]]
-    print(data.head())
+    # print(data.head())
     return data
 
 def get_stock_yahoo(ticker):
     data = yf.download(ticker, START, END)
     data[ticker] = data["Adj Close"]
     data = data[[ticker]]
-    print(data.head())
+    # print(data.head())
     return data
 
 def plot_price(df=pd.DataFrame):
@@ -153,7 +153,7 @@ def plot_eff_frontier(df=pd.DataFrame):
     ef.add_constraint(lambda w: w[3] + w[4] <= 0.10)
     fig, ax = plt.subplots()
     plotting.plot_efficient_frontier(ef, ax=ax, show_assets=True)
-    print(ef)
+    # print(ef)
  
     # 100 portfolios with risks between 0.10 and 0.30. Range of parmeter for a frontier.
     # risk_range = np.linspace(0.10, 0.40, 100)
@@ -188,7 +188,7 @@ def combine_stocks(tickers):
     for i in tickers:
         data_frames.append(get_stock_yahoo(i))
     df_merged = reduce(lambda left, right: pd.merge(left, right, on=['Date'], how='outer'), data_frames)
-    print(df_merged.head())
+    # print(df_merged.head())
     return df_merged
 
 def display(start,end,data):
@@ -202,40 +202,14 @@ def get_data(GLOBAL_PATH, LOCAL_PATH):
         download = requests.get(GLOBAL_PATH).content
         df = pd.read_csv(io.StringIO(download.decode('utf-8')), parse_dates=True, index_col='date') 
         df = df.dropna()
-        print(df)
+        # print(df)
         return df
     except Exception as e:
         df = pd.read_csv(LOCAL_PATH, parse_dates=True, index_col='date')
         return df
 
-# PUT GLOBALS HERE
-GLOBAL_PATH="https://raw.githubusercontent.com/artkochnev/project_capitalist/main/scripts/assets/stocks.csv"
-LOCAL_PATH=r'assets/stocks.csv'
-
-DF_PATH="https://raw.githubusercontent.com/artkochnev/project_capitalist/main/scripts/assets/stocks.csv"
-download = requests.get(DF_PATH).content
-DF = pd.read_csv(io.StringIO(download.decode('utf-8')),parse_dates=True, index_col="date")
-
-# FINAL SCRIPT
-if __name__ == "__main__":
-    #use the above DF for the below calculations
-    #portfolio= combine_stocks(tickers)
-    df = get_data(GLOBAL_PATH, LOCAL_PATH)
-    #portfolio = combine_stocks(df)
-    benchmark = "SP500"
+def generate_backtest(df, benchmark, weights, cut_off_date):
     portfolio = df.loc[:, ~df.columns.isin([benchmark])]
-
-    # plot_price=plot_price(portfolio)
-    # plot_return=plot_return(portfolio)
-    # plot_eff_frontier=plot_eff_frontier(portfolio)
-    #Describe the 2 plots dinamically
-    #MVO
-    cut_off_date = "2016-01-01"
-    df_train = df.loc[df.index < str(cut_off_date)]
-    train_size = len(df_train.index)
-    print(f'Size of the training set: {train_size}' )
-    portfolio_weights_performance_mvo= make_portfolio_mvo(df_train)
-    weights = portfolio_weights_performance_mvo['clean weights']  # Use a selector by key inside the dictionary, does wonders.
 
     # Calculate results for the fixed portfolio weights
     df_weights = pd.DataFrame(weights, index = portfolio.index)
@@ -246,10 +220,74 @@ if __name__ == "__main__":
     # Calculate benchmark portfolio
     df_benchmark = df.loc[:, df.columns.isin([benchmark])]
     df_benchmark['benchmark_index'] = df_benchmark[benchmark] / df_benchmark[benchmark][0]
-    df_backtest = pd.merge(df_results, df_benchmark, left_index = True)
+    df_backtest = pd.merge(df_results["index"], df_benchmark["benchmark_index"], left_index = True, right_index = True)
+    
+    # Calculate performance metrics,  Normalize first
+    df_test = df_backtest.loc[df.index >= str(cut_off_date)]
+    df_test['index'] = df_test['index'] / df_test['index'][0]
+    df_test['benchmark_index'] = df_test['benchmark_index'] / df_test['benchmark_index'][0]
+    
+    metrics = {
+            "Portfolio mean": round(df_test["index"].mean(), 2), 
+            "Benchmark mean": round(df_test["benchmark_index"].mean(), 2),
+            "Portfolio volatility (CV)": round(df_test["index"].std()/df_test["index"].mean(),2), 
+            "Benchmark volatility (CV)": round(df_test["benchmark_index"].std()/df_test["benchmark_index"].mean(),2),
+            "Portfolio end growth": round(df_test["index"][len(df_test.index)-1]/df_test["index"][0],2),
+            "Index end growth": round(df_test["benchmark_index"][len(df_test.index)-1]/df_test["benchmark_index"][0],2)
+            }
 
-    fig = px.line(df_backtest, y=df_backtest.columns, x=df_backtest.index)
+    print(metrics)
+    return df_backtest #, metrics
+
+def generate_train_data(df, cut_off_date):
+    benchmark = "SP500"
+    portfolio = df.loc[:, ~df.columns.isin([benchmark])]
+
+    #Describe the 2 plots dinamically
+    #MVO
+    cut_off_date = "2016-01-01"
+    df_train = portfolio.loc[df.index < str(cut_off_date)]
+    train_size = len(df_train.index)
+    test_size = len(df.loc[df.index >= str(cut_off_date)])
+    print(f'Size of the training set: {train_size}')
+    print(f'Size of the test set: {test_size}')
+    return df_train
+
+def plot_results(df, cut_off_date):
+    fig = px.line(df, y=df.columns, x=df.index)
+    fig.add_vline(x=cut_off_date, line_dash="dash", line_color="green")
     fig.show()
+
+
+# PUT GLOBALS HERE
+GLOBAL_PATH="https://raw.githubusercontent.com/artkochnev/project_capitalist/main/scripts/assets/stocks.csv"
+LOCAL_PATH=r'assets/stocks.csv'
+
+DF_PATH="https://raw.githubusercontent.com/artkochnev/project_capitalist/main/scripts/assets/stocks.csv"
+download = requests.get(DF_PATH).content
+DF = pd.read_csv(io.StringIO(download.decode('utf-8')),parse_dates=True, index_col="date")
+BENCHMARK = "SP500"
+CUT_OFF_DATE = "2016-01-01"
+
+# FINAL SCRIPT
+if __name__ == "__main__":
+    #use the above DF for the below calculations
+    #portfolio= combine_stocks(tickers)
+    df = get_data(GLOBAL_PATH, LOCAL_PATH)
+    #portfolio = combine_stocks(df)
+    benchmark = "SP500"
+
+    # plot_price=plot_price(portfolio)
+    # plot_return=plot_return(portfolio)
+    # plot_eff_frontier=plot_eff_frontier(portfolio)
+    
+    #Describe the 2 plots dinamically
+    #MVO
+    df_train = generate_train_data(df, CUT_OFF_DATE)
+    portfolio_weights_performance_mvo= make_portfolio_mvo(df_train)
+    weights = portfolio_weights_performance_mvo['clean weights']  # Use a selector by key inside the dictionary, does wonders.
+    df_backtest = generate_backtest(df, BENCHMARK, weights, CUT_OFF_DATE)
+    plot_results(df_backtest, CUT_OFF_DATE)
 
     # portfolio_allocation_mvo=allocation_values(portfolio,weights,10000)
     # #HRP
