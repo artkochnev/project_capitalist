@@ -209,10 +209,10 @@ def get_data(GLOBAL_PATH, LOCAL_PATH):
         return df
 
 # PUT GLOBALS HERE
-GLOBAL_PATH="https://raw.githubusercontent.com/artkochnev/project_capitalist/main/scripts/assets/stocks.csv?token=GHSAT0AAAAAABUHJOP2HUKK3JBWPBXDXI3WYT6BP6Q"
+GLOBAL_PATH="https://raw.githubusercontent.com/artkochnev/project_capitalist/main/scripts/assets/stocks.csv"
 LOCAL_PATH=r'assets/stocks.csv'
 
-DF_PATH="https://raw.githubusercontent.com/artkochnev/project_capitalist/main/scripts/assets/stocks.csv?token=GHSAT0AAAAAABUHJOP2HUKK3JBWPBXDXI3WYT6BP6Q"
+DF_PATH="https://raw.githubusercontent.com/artkochnev/project_capitalist/main/scripts/assets/stocks.csv"
 download = requests.get(DF_PATH).content
 DF = pd.read_csv(io.StringIO(download.decode('utf-8')),parse_dates=True, index_col="date")
 
